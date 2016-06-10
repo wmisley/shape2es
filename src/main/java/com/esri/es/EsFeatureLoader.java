@@ -98,6 +98,7 @@ public class EsFeatureLoader implements FeatureLoadable {
     */
 
     private void buildPolygon(XContentBuilder xb, Polygon geo) throws Exception {
+        //comment
         double prevX = -190.0;
         double prevY = -190.0;
 
