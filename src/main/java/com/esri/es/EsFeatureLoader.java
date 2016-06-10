@@ -2,6 +2,8 @@ package com.esri.es;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.MultiPolygon;
+import com.vividsolutions.jts.geom.Polygon;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.index.IndexResponse;
@@ -9,17 +11,21 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.node.Node;
 import org.geotools.feature.FeatureIterator;
 import org.geotools.geometry.jts.Geometries;
+import org.geotools.referencing.CRS;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.type.AttributeDescriptor;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.geometry.jts.JTS;
+import org.opengis.referencing.operation.MathTransform;
 
+import java.math.RoundingMode;
 import java.net.InetAddress;
+import java.text.DecimalFormat;
 import java.util.List;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
-import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 
 public class EsFeatureLoader implements FeatureLoadable {
@@ -47,34 +53,36 @@ public class EsFeatureLoader implements FeatureLoadable {
 
     public void loadFeatures(List<AttributeDescriptor> descs, FeatureIterator<SimpleFeature> features) throws Exception {
         SimpleFeature sf;
+        int badFeatures = 0;
 
         while (features.hasNext()) {
             sf = features.next();
-            logger.debug("Reading: ID={}GEOMETRY={}", sf.getID(), sf.getDefaultGeometry());
+            //logger.debug("Reading: ID={}GEOMETRY={}", sf.getID(), sf.getDefaultGeometry());
 
             XContentBuilder xb = jsonBuilder().startObject();
             buildFeature(descs, sf, xb);
             xb.endObject();
 
-            IndexResponse response = client.prepareIndex(esIndex, "feature", sf.getID())
-                    .setSource(xb)
-                    .execute()
-                    .actionGet();
+            //try {
+                IndexResponse response = client.prepareIndex(esIndex, "feature", sf.getID())
+                        .setSource(xb)
+                        .execute()
+                        .actionGet();
 
-            System.out.format("Loaded job ID: %s\n", sf.getID());
+                System.out.format("Loaded job ID: %s\n", sf.getID());
+            //} catch (Exception ex) {
+            //    System.out.println("Error, couldn't load feature:" + ex.getMessage());
+            //    badFeatures++;
+            //}
         }
 
-        features.close();
+        System.out.format("Couldn't load %s features\n", badFeatures);
 
-        //String alias = esIndex.substring(0, esIndex.lastIndexOf('-'));
-        //IndicesAliasesResponse resp = client.admin().indices().prepareAliases().addAlias(esIndex, alias).execute().actionGet();
-        //if (!resp.isAcknowledged())
-        //    System.out.println("Failed to create index alias " + alias);
+        features.close();
     }
 
     /*
-
-    "location" : {
+    "shape" : {
         "type" : "polygon",
                 "coordinates" : [[
         [ 4.89218, 52.37356 ],
@@ -89,7 +97,10 @@ public class EsFeatureLoader implements FeatureLoadable {
     }
     */
 
-    private void buildPolygon(XContentBuilder xb, Geometry geo) throws Exception {
+    private void buildPolygon(XContentBuilder xb, Polygon geo) throws Exception {
+        double prevX = -190.0;
+        double prevY = -190.0;
+
         if (geo != null) {
             xb.startObject("shape");
 
@@ -97,25 +108,38 @@ public class EsFeatureLoader implements FeatureLoadable {
             xb.startArray("coordinates");
             xb.startArray();
 
-            Coordinate[] coords = geo.getCoordinates();
+            Coordinate[] coords = geo.getExteriorRing().getCoordinates();
             for (int i = 0; i < coords.length; i++) {
-                xb.startArray();
-                xb.value(coords[i].x);
-                xb.value(coords[i].y);
-                xb.endArray();
+                if (!((prevX == coords[i].x) && (prevY == coords[i].y))) {
+                    xb.startArray();
+                    xb.value(coords[i].x);
+                    xb.value(coords[i].y);
+                    xb.endArray();
+
+                    prevX = coords[i].x;
+                    prevY = coords[i].y;
+                }
             }
 
             xb.endArray();
             xb.endArray();
 
             xb.endObject();
+
+            //System.out.println(xb.string());
         }
     }
 
     private void buildFeature(List<AttributeDescriptor> descs, SimpleFeature sf, XContentBuilder xb) throws Exception {
-       Geometry geo = (Geometry) sf.getDefaultGeometry();
+        Geometry sourceGeo = (Geometry) sf.getDefaultGeometry();
 
-       switch (Geometries.get(geo)) {
+        CoordinateReferenceSystem sourceCRS = sf.getFeatureType().getCoordinateReferenceSystem();
+        CoordinateReferenceSystem targetCRS = org.geotools.referencing.crs.DefaultGeographicCRS.WGS84;
+
+        MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS);
+        Geometry targetGeometry = JTS.transform(sourceGeo, transform);
+
+       switch (Geometries.get(targetGeometry)) {
            case POINT:
                throw new Exception("Points not supported");
            case MULTIPOINT:
@@ -125,15 +149,25 @@ public class EsFeatureLoader implements FeatureLoadable {
            case MULTILINESTRING:
                throw new Exception("Multilinestring not supported");
            case POLYGON:
+               buildPolygon(xb, (Polygon) targetGeometry);
            case MULTIPOLYGON:
-               buildPolygon(xb, geo);
-               //throw new Exception("Multipolygon not supported");
+               MultiPolygon multiPolygon = (MultiPolygon) targetGeometry;
+
+               if (multiPolygon.getNumGeometries() > 1) {
+                   throw new Exception("Multipolygon that holds more than 1 polygon not supported");
+               } else {
+                   buildPolygon(xb, (Polygon) multiPolygon.getGeometryN(0));
+               }
            default:
 
        }
 
        for (AttributeDescriptor desc : descs) {
-           xb.field(desc.getLocalName(), sf.getAttribute(desc.getLocalName()));
+           if (!desc.getLocalName().equalsIgnoreCase("the_geom")) {
+               if (sf.getAttribute(desc.getLocalName()) != null) {
+                   xb.field(desc.getLocalName(), sf.getAttribute(desc.getLocalName()));
+               }
+           }
         }
     }
 }
