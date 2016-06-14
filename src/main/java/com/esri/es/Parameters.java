@@ -1,7 +1,12 @@
 package com.esri.es;
 
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class Parameters {
+    private static final Logger logger = LogManager.getLogger(Shape2Es.class);
+
     public Parameters() {
         shapeFilePath = "";
     }
@@ -21,9 +26,9 @@ public class Parameters {
             esIndex = args[3];
             isValid = true;
         } else {
-            System.out.format("ERROR: 3 parameters required");
-            System.out.format("<Shapefile path> <ES host> <ES port> <ES index>");
-            System.out.println("Exiting program");
+            logger.error("ERROR: 3 parameters required");
+            logger.error("<Shapefile path> <ES host> <ES port> <ES index>");
+            logger.error("Exiting program");
         }
 
         return isValid;

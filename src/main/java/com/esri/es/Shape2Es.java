@@ -1,15 +1,20 @@
 package com.esri.es;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class Shape2Es {
+    private static final Logger logger = LogManager.getLogger(Shape2Es.class);
+
     static public void main(String[] args) {
         Parameters params = new Parameters();
 
         if (!params.parseInput(args)) {
             return;
         } else {
-            System.out.format("Loading %s\n", params.shapeFilePath);
-            System.out.format("...to Elasticsearch host %s on port \n", params.esHost, params.esPort);
-            System.out.format("...to Elasticsearch index %s\n", params.esIndex);
+            logger.info("Loading {}", params.shapeFilePath);
+            logger.info("...to Elasticsearch host {} on port", params.esHost, params.esPort);
+            logger.info("...to Elasticsearch index {}", params.esIndex);
         }
 
         try {
@@ -17,12 +22,12 @@ public class Shape2Es {
             EsFeatureLoader esLoader = new EsFeatureLoader();
 
             esLoader.connect(params.esHost, params.esPort, params.esIndex);
+            esLoader.addGeoShapMapping(params.esIndex);
             shpLoader.load(params.shapeFilePath, esLoader);
             esLoader.disconnect();
         } catch (Exception ex) {
-            System.out.println("Error loading shapefile");
-            System.out.println("Exiting program");
-            ex.printStackTrace();
+            logger.error("Error loading shapefile", ex);
+            logger.error("Exiting program");
         }
     }
 }
