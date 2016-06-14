@@ -256,6 +256,8 @@ public class EsFeatureLoader implements FeatureLoadable {
 
            case POLYGON:
                buildPolygon(xb, (Polygon) targetGeometry);
+               break;
+
            case MULTIPOLYGON:
                MultiPolygon multiPolygon = (MultiPolygon) targetGeometry;
 
