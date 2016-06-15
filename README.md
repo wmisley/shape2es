@@ -16,3 +16,11 @@ To build the tool, perform the following command:
 ```
 mvn install
 ```
+To run the tool, execute the following command:
+```
+shape2es <shapefile path> <elasticsearch hostname> <elasticsearch port> <elasticsearch indexname>
+```
+an example run of this command:
+```
+/Users/williami/Downloads/BUILDING_P.shp eshost 9300 buildings2
+```
