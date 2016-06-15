@@ -22,5 +22,5 @@ shape2es <shapefile path> <elasticsearch hostname> <elasticsearch port> <elastic
 ```
 an example run of this command:
 ```
-/Users/williami/Downloads/BUILDING_P.shp eshost 9300 buildings2
+shape2es /Users/williami/Downloads/BUILDING_P.shp eshost 9300 buildings2
 ```
