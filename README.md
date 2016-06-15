@@ -3,6 +3,12 @@ This is a Java commandline tool that supports loading shapefiles into Elasticsea
 
 # Features
 
+# Prerequisites
+
+* Java 8
+* Maven
+* Elasticsearch 2.3.3
+
 # Instructions
 ```
 mvn install
