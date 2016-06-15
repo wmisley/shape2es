@@ -12,6 +12,7 @@ This command line tool supports loading point, line, and polygon features from a
 
 
 # Instructions
+To build the tool, perform the following command:
 ```
 mvn install
 ```
