@@ -13,6 +13,8 @@ Maven
   
 Elasticsearch 2.3.3
 
+https://hub.docker.com/_/elasticsearch/
+
 # Instructions
 ```
 mvn install
