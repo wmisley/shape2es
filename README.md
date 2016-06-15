@@ -6,7 +6,8 @@ This is a Java commandline tool that supports loading shapefiles into Elasticsea
 # Prerequisites
 
 * Java 8
-* Maven
+* Maven 
+https://maven.apache.org/download.cgi
 * Elasticsearch 2.3.3
 
 # Instructions
