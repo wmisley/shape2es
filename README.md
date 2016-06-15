@@ -5,10 +5,13 @@ This is a Java commandline tool that supports loading shapefiles into Elasticsea
 
 # Prerequisites
 
-* Java 8
-* Maven 
-https://maven.apache.org/download.cgi
-* Elasticsearch 2.3.3
+Java 8
+
+Maven 
+  download: https://maven.apache.org/download.cgi
+  install instructions: https://maven.apache.org/install.html
+  
+Elasticsearch 2.3.3
 
 # Instructions
 ```
