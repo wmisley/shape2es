@@ -4,3 +4,6 @@ This is a Java commandline tool that supports loading shapefiles into Elasticsea
 # Features
 
 # Instructions
+```
+mvn install
+```
